@@ -3,6 +3,7 @@
 import asyncio
 import json
 import traceback
+import instructor
 from typing import List, Optional, Tuple, TypedDict, cast
 
 from openai import OpenAI
@@ -99,24 +100,23 @@ def room_selection_grader(client: OpenAI, final_message: Optional[str], expected
         f"Score the match on a 0-1 scale. Be critical.\n"
         f"Bear in mind that the score can be partially correct (between 0 and 1)."
     )
-    judge = client.chat.completions.parse(
-        model="gpt-4.1-mini",
+
+    instructor_client = instructor.from_openai(client, mode=instructor.Mode.JSON)
+    judge: JudgeResponse = instructor_client.chat.completions.create(
+        model="deepseek-chat",
         messages=[
             {"role": "user", "content": judge_prompt},
         ],
-        response_format=JudgeResponse,
+        response_model=JudgeResponse,
         temperature=0.0,
     )
 
-    judge_result = judge.choices[0].message.content
     console.print(f"[bold yellow]=== Judge ===[/bold yellow]")
-    console.print(judge_result)
-
-    judge_result_parsed = JudgeResponse.model_validate_json(judge_result)  # type: ignore
+    console.print(judge)
 
     console.print(f"[bold yellow]=== Judge Score ===[/bold yellow]")
-    console.print(judge_result_parsed.score)
-    return judge_result_parsed.score
+    console.print(judge.score)
+    return judge.score
 
 
 @rollout
@@ -150,7 +150,7 @@ def room_selector(task: RoomSelectionTask, prompt_template: PromptTemplate) -> f
     """
 
     client = OpenAI()
-    model = "gpt-4.1-nano"
+    model = "deepseek-chat"
 
     user_message = prompt_template.format(**task["task_input"])
 
