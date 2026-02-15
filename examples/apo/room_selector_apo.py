@@ -40,6 +40,8 @@ def main() -> None:
 
     algo = APO[RoomSelectionTask](
         openai_client,
+        gradient_model="deepseek-chat",
+        apply_edit_model="deepseek-chat",
         val_batch_size=10,
         gradient_batch_size=4,
         beam_width=2,

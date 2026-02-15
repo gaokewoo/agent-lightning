@@ -17,7 +17,7 @@ else
 fi
 
 # 设置deepseek环境变量，运行APO case时需要
-export OPENAI_API_KEY="sk-997b3e6df314411a8fc3ae40fa83b9c9"
+export OPENAI_API_KEY="YOUR_DEEPSEEK_KEY"
 export OPENAI_BASE_URL="https://api.deepseek.com"
 echo "✓ DeepSeek API环境变量已设置"
 
@@ -26,7 +26,7 @@ export HF_ENDPOINT=https://hf-mirror.com
 echo "✓ HuggingFace镜像已设置: $HF_ENDPOINT"
 
 # 设置wandb，运行spider case时需要
-export WANDB_API_KEY=wandb_v1_TCARNCsCnvovkVCTaMUoCwmcNqv
+export WANDB_API_KEY=YOUR_WANDB_KEY
 echo "✓ W&B API Key已设置"
 
 # 显示当前环境状态

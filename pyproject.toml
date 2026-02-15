@@ -268,7 +268,7 @@ conflicts = [
   ],
 ]
 environments = [
-  "sys_platform == 'linux'",
+  "sys_platform == 'linux' or sys_platform == 'darwin'",
 ]
 dependency-metadata = [
   # Patch the dependencies of instructor to unpin "openai".
