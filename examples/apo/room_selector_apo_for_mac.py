@@ -3,6 +3,7 @@
 """This sample code demonstrates how to use an existing APO algorithm to tune the prompts."""
 
 import logging
+import os
 from typing import Tuple, cast
 
 from openai import AsyncOpenAI
@@ -12,6 +13,11 @@ from agentlightning import Trainer, setup_logging
 from agentlightning.adapter import TraceToMessages
 from agentlightning.algorithm.apo import APO
 from agentlightning.types import Dataset
+from agentlightning.tracer.agentops import AgentOpsTracer
+
+
+import agentops
+
 
 
 def load_train_val_dataset() -> Tuple[Dataset[RoomSelectionTask], Dataset[RoomSelectionTask]]:
@@ -35,6 +41,18 @@ def setup_apo_logger(file_path: str = "apo.log") -> None:
 def main() -> None:
     setup_logging()
     setup_apo_logger()
+
+    # init agentops
+    agentops.init(
+        api_key=os.environ["AGENTOPS_API_KEY"],
+        tags=["room_selector", "apo", "dev"],  # 可选：添加标签
+    )
+
+    #创建禁用自动管理的 tracer
+    tracer = AgentOpsTracer(
+        agentops_managed=False,  # 关键：禁用自动 dummy key
+        instrument_managed=True,
+    )
 
     openai_client = AsyncOpenAI()
 
@@ -63,6 +81,7 @@ def main() -> None:
         # APO algorithm needs an adapter to process the traces produced by rollouts
         # Use this adapter to convert spans to messages
         adapter=TraceToMessages(),
+        tracer=tracer,
     )
     dataset_train, dataset_val = load_train_val_dataset()
     trainer.fit(agent=room_selector, train_dataset=dataset_train, val_dataset=dataset_val)
