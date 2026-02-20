@@ -32,18 +32,18 @@ def setup_apo_logger(file_path: str = "apo.log") -> None:
     """Dump a copy of all the logs produced by APO algorithm to a file."""
 
     file_handler = logging.FileHandler(file_path)
-    file_handler.setLevel(logging.INFO)
+    file_handler.setLevel(logging.DEBUG)
     formatter = logging.Formatter("%(asctime)s [%(levelname)s] (Process-%(process)d %(name)s)   %(message)s")
     file_handler.setFormatter(formatter)
     logging.getLogger("agentlightning.algorithm.apo").addHandler(file_handler)
 
 
 def main() -> None:
-    setup_logging()
+    setup_logging(level=logging.DEBUG)
     setup_apo_logger()
 
     # init agentops
-    agentops.init(
+    agentops.init(  # type: ignore
         api_key=os.environ["AGENTOPS_API_KEY"],
         tags=["room_selector", "apo", "dev"],  # 可选：添加标签
     )

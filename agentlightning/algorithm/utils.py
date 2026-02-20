@@ -175,3 +175,104 @@ def with_llm_proxy(
         return wrapper
 
     return decorator
+
+
+def serialize_for_logging(obj: Any, max_depth: int = 10, _current_depth: int = 0) -> Any:
+    """Recursively serialize any Python object into JSON-serializable format.
+
+    This function handles:
+    - Pydantic models (via model_dump())
+    - Built-in collections (dict, list, tuple, set)
+    - Primitive types (str, int, float, bool, None)
+    - Objects with __dict__ or custom serialization
+    - Falls back to str() for unserializable objects
+
+    Args:
+        obj: The object to serialize.
+        max_depth: Maximum recursion depth to prevent infinite loops.
+        _current_depth: Current recursion depth (internal use).
+
+    Returns:
+        A JSON-serializable representation of the object.
+
+    Examples:
+        ```python
+        from pydantic import BaseModel
+        from agentlightning.algorithm.utils import serialize_for_logging
+
+        class MyModel(BaseModel):
+            name: str
+            value: int
+
+        # Serialize Pydantic model
+        model = MyModel(name="test", value=42)
+        result = serialize_for_logging(model)
+        # Returns: {"name": "test", "value": 42}
+
+        # Serialize complex nested structure
+        complex_obj = {
+            "models": [model],
+            "metadata": {"count": 1},
+            "agent": some_agent_object
+        }
+        result = serialize_for_logging(complex_obj)
+        # Returns JSON-serializable dict with proper string representations
+        ```
+    """
+    # Check recursion depth to prevent infinite loops
+    if _current_depth > max_depth:
+        return "<max recursion depth exceeded>"
+
+    # Handle None
+    if obj is None:
+        return None
+
+    # Handle primitive types
+    if isinstance(obj, (str, int, float, bool)):
+        return obj
+
+    # Handle Pydantic models
+    if hasattr(obj, "model_dump") and callable(getattr(obj, "model_dump")):
+        try:
+            # Pydantic v2
+            data = obj.model_dump()
+            return serialize_for_logging(data, max_depth, _current_depth + 1)
+        except Exception:
+            pass
+
+    # Handle objects with dict() method (Pydantic v1 or similar)
+    if hasattr(obj, "dict") and callable(getattr(obj, "dict")) and not isinstance(obj, type):
+        try:
+            data = obj.dict()
+            return serialize_for_logging(data, max_depth, _current_depth + 1)
+        except Exception:
+            pass
+
+    # Handle dictionaries
+    if isinstance(obj, dict):
+        result: dict[str, Any] = {}
+        for key, value in obj.items():  # type: ignore
+            key_str = str(key)  # type: ignore
+            result[key_str] = serialize_for_logging(value, max_depth, _current_depth + 1)
+        return result
+
+    # Handle lists, tuples, and sets
+    if isinstance(obj, (list, tuple, set)):
+        return [serialize_for_logging(item, max_depth, _current_depth + 1) for item in obj]  # type: ignore
+
+    # Handle objects with __dict__ (regular Python objects)
+    if hasattr(obj, "__dict__") and not isinstance(obj, type):
+        return serialize_for_logging(obj.__dict__, max_depth, _current_depth + 1)
+
+    # Handle objects with custom __str__ or __repr__
+    try:
+        # Try str() first for cleaner output
+        return str(obj)
+    except Exception:
+        try:
+            # Fall back to repr()
+            return repr(obj)
+        except Exception:
+            # Last resort
+            return f"<unserializable object of type {type(obj).__name__}>"
+

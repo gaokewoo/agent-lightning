@@ -10,6 +10,7 @@ and distributed worker coordination.
 from __future__ import annotations
 
 import asyncio
+import json
 import logging
 import random
 import threading
@@ -35,6 +36,7 @@ from agentlightning.reward import emit_reward, find_final_reward
 from agentlightning.store.base import LightningStore
 from agentlightning.tracer.base import Tracer
 from agentlightning.tracer.otel import OtelTracer
+from agentlightning.algorithm.utils import serialize_for_logging
 from agentlightning.types import (
     AttemptedRollout,
     Hook,
@@ -96,7 +98,7 @@ class LitAgentRunner(Runner[T_task]):
                 Querying GPU stats can be slow under load, so this is disabled by default.
         """
         super().__init__()
-        self._tracer = tracer
+        self._tracer: Tracer = tracer
         self._max_rollouts = max_rollouts
         self._poll_interval = poll_interval
         self._heartbeat_interval = heartbeat_interval
@@ -651,6 +653,9 @@ class LitAgentRunner(Runner[T_task]):
                 return rollout_id
 
         logger.debug(f"{self._log_prefix(rollout_id)} Resources fetched (id={resources_update.resources_id}).")
+        
+        # gaoke: RESOURCES UPDATE
+        logger.info(f"gaoke resources_update: {json.dumps( serialize_for_logging(resources_update.model_dump()))}")
 
         trace_spans: List[ReadableSpan] | List[Span] = []
         has_exception: bool = False
@@ -690,6 +695,9 @@ class LitAgentRunner(Runner[T_task]):
                     )
                     logger.debug(f"{self._log_prefix(rollout_id)} Sync rollout method completed.")
 
+                # gaoke: ROLLOUT RESULT
+                logger.info(f"gaoke rollout_method result: {json.dumps( serialize_for_logging(result))}")
+
                 await self._trigger_hooks(
                     hook_type="on_trace_end", agent=agent, runner=self, tracer=self._tracer, rollout=next_rollout
                 )
@@ -700,6 +708,11 @@ class LitAgentRunner(Runner[T_task]):
             trace_spans = await self._post_process_rollout_result(next_rollout, result)
             last_reward = find_final_reward(trace_spans)
 
+            # gaoke: SPANS RESULT
+            logger.info(f"gaoke spans result: {json.dumps(serialize_for_logging(trace_spans))}")
+            logger.info(f"gaoke last_reward: {json.dumps(serialize_for_logging(last_reward))}")
+
+                
             end_time = time.time()
             logger.info(
                 f"{self._log_prefix(rollout_id)} Completed in "
@@ -753,6 +766,7 @@ class LitAgentRunner(Runner[T_task]):
         num_tasks_processed = 0
         logger.info(f"{self._log_prefix()} Started async rollouts (max: {self._max_rollouts or 'unlimited'}).")
         store = self.get_store()
+        
 
         stop_heartbeat = self._start_heartbeat_loop(store)
 
@@ -776,6 +790,9 @@ class LitAgentRunner(Runner[T_task]):
 
                 if next_rollout is None:
                     return
+
+                # gaoke: NEXT ROLLOUT
+                logger.info(f"gaoke dequeue_rollout next_rollout: {json.dumps(serialize_for_logging(next_rollout.model_dump()))}")
 
                 # Execute the step
                 await self._step_impl(next_rollout)
